@@ -12,12 +12,12 @@ namespace NHibernate.vNext
 
         protected override IDictionary GetMap()
         {
-            return HttpContext.Current.Items[SessionFactoryMapKey] as IDictionary;
+            return HttpContextHelper.Current.Items[SessionFactoryMapKey] as IDictionary;
         }
 
         protected override void SetMap(IDictionary value)
         {
-            HttpContext.Current.Items.Add(SessionFactoryMapKey, value);
+            HttpContextHelper.Current.Items.Add(SessionFactoryMapKey, value);
         }
 
     }
