@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNet.Mvc.Filters;
+﻿using System;
+using Microsoft.AspNet.Mvc.Filters;
 using Microsoft.Framework.DependencyInjection;
 
 namespace NHibernate.vNext
@@ -7,6 +8,7 @@ namespace NHibernate.vNext
     {
         private readonly bool _openTransaction;
         private readonly bool _verifyModelStateError;
+        private IDatabaseRequest _request;
 
         public SessionRequiredAttribute(bool openTransaction = true, bool verifyModelStateError = true)
         {
@@ -16,22 +18,19 @@ namespace NHibernate.vNext
 
         public override void OnActionExecuting(ActionExecutingContext filterContext)
         {
-            filterContext.HttpContext.ApplicationServices.GetService<IDatabaseFactory>().BeginRequest(_openTransaction);
+            var factory = filterContext.HttpContext.ApplicationServices.GetService<IDatabaseFactory>();
+            _request = factory.BeginRequest(_openTransaction);
         }
 
         public override void OnActionExecuted(ActionExecutedContext filterContext)
         {
-            var factory = filterContext.HttpContext.ApplicationServices.GetService<IDatabaseFactory>();
-            
             if (filterContext.Exception != null || (_verifyModelStateError && filterContext.ModelState.ErrorCount > 0))
             {
-                factory.EndRequest(true); /*force rollback.*/
+                _request.Finish(true); /*force rollback.*/
                 return;
             }
 
-            factory.EndRequest();
+            _request.Finish();
         }
-
-
     }
 }

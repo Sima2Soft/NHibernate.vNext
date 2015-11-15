@@ -1,12 +1,11 @@
-﻿namespace NHibernate.vNext
+﻿using System;
+using FluentNHibernate.Diagnostics;
+
+namespace NHibernate.vNext
 {
-    public interface IDatabaseFactory
+    public interface IDatabaseFactory 
     {
         ISession Session { get; }
-        void BeginRequest(bool beginTransaction = true);
-        void BeginTransaction();
-        void CommitTransaction();
-        void RollbackTransaction();
-        void EndRequest(bool errors = false, bool reopen = false);
+        IDatabaseRequest BeginRequest(bool beginTransaction = true);
     }
 }

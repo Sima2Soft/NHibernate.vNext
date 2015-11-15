@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Reflection;
 using FluentNHibernate.Cfg;
 using FluentNHibernate.Conventions.Helpers;
@@ -9,81 +10,73 @@ namespace NHibernate.vNext
 {
     public class DatabaseFactory : IDatabaseFactory
     {
+        private readonly DataConfiguration _dataConfiguration;
         private static ISessionFactory _sessionFactory;
 
         public DatabaseFactory(DataConfiguration dataConfiguration)
         {
-            _sessionFactory = Fluently.Configure()
-                .Database(NHibernateConfiguration.GetDatabaseConfiguration(dataConfiguration))
-                .Cache(c => c.UseQueryCache().ProviderClass<HashtableCacheProvider>())
-                .CurrentSessionContext<AspNetvNextWebSessionContext>()
-                .Mappings(m => m.FluentMappings.AddFromAssembly(Assembly.Load(dataConfiguration.MapAssembly))
-                    .Conventions.Add(DefaultLazy.Always()))
-                .Mappings(m => m.HbmMappings.AddFromAssembly(Assembly.Load(dataConfiguration.CoreAssembly)))
-                .BuildSessionFactory();
+            _dataConfiguration = dataConfiguration;
         }
 
         public ISession Session => !CurrentSessionContext.HasBind(_sessionFactory) ? null : _sessionFactory.GetCurrentSession();
         
-        public virtual void BeginRequest(bool beginTransaction = true)
+        public virtual IDatabaseRequest BeginRequest(bool beginTransaction = true)
         {
-            ISession session = _sessionFactory.OpenSession();
+            if (_sessionFactory == null)
+                _sessionFactory = GetConfiguration();
 
-            if (beginTransaction) session.BeginTransaction();
-
-            CurrentSessionContext.Bind(session);
+            return new DatabaseRequest(_sessionFactory)
+                .Open(beginTransaction);
         }
 
-        public void BeginTransaction()
+       
+        private Assembly GetAssembly(string name)
         {
-            Session.Transaction.Begin();
-        }
-
-        public virtual void CommitTransaction()
-        {
-            Session.Transaction.Commit();
-        }
-
-        public virtual void RollbackTransaction()
-        {
-            Session.Transaction.Rollback();
-        }
-        
-        public virtual void EndRequest(bool errors = false, bool reopen = false)
-        {
-            var session = CurrentSessionContext.Unbind(_sessionFactory);
-
-            if (session == null) return;
-
             try
             {
-                if (session.Transaction.IsActive)
-                {
-                    if (errors) //errors in context. Not unbind session.
-                        session.Transaction.Rollback();
-                    else
-                        session.Transaction.Commit();
-                }
+                return Assembly.Load(GetAssemblyName(name));
             }
-            catch (Exception exception)
+            catch (FileLoadException)
             {
-                if (session.IsOpen && session.Transaction.IsActive)
-                    session.Transaction.Rollback();
-
-                throw new Exception(exception.Message);
+                throw new Exception($"Cannot find assembly name {name}. Please, configure correctly CoreAssembly and MapAssembly onto your config file.");
             }
-            finally
+            
+        }
+
+        private string GetAssemblyName(string path)
+        {
+            try
             {
-                if (session.IsOpen)
-                    session.Close();
+                if (!path.Contains(",")) return path;
 
-                session.Dispose();
+                var position = path.IndexOf(",", StringComparison.Ordinal);
+                path = path.Substring(position + 1, path.Length - position - 1).Trim();
+
+            }
+            catch
+            {
+                // ignored
             }
 
-            if (reopen)
-                BeginRequest();
+            return path;
 
         }
+
+
+        private ISessionFactory GetConfiguration()
+        {
+            return Fluently.Configure()
+                    .Database(NHibernateConfiguration.GetDatabaseConfiguration(_dataConfiguration))
+                    .Cache(c => c.UseQueryCache().ProviderClass<HashtableCacheProvider>())
+                    .CurrentSessionContext<AspNetvNextWebSessionContext>()
+                    .Mappings(m => m.FluentMappings.AddFromAssembly(GetAssembly(_dataConfiguration.MapAssembly))
+                        .Conventions.Add(DefaultLazy.Always()))
+                    .Mappings(m => m.HbmMappings.AddFromAssembly(GetAssembly(_dataConfiguration.CoreAssembly)))
+                    .BuildSessionFactory();
+
+
+        }
+
 
     }
 }
