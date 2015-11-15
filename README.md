@@ -59,12 +59,14 @@ Create your configuration file on **wwwroot\config.Development.json**
     "Dialect": "mssql2008",
     "Driver": "mssqlserver",
     "UseDriverOracleODAC": false,
-    "CoreAssembly":  "Application.Core",
-    "MapAssembly":  "Application.Mapping"
+    "CoreAssembly":  "Application.Core, Application",
+    "MapAssembly":  "Application.Mapping, Application"
   }
 }
 ```
+
 Startup.cs configuration.
+
 ```C#
 public class Startup
     {
@@ -105,7 +107,32 @@ public class Startup
         }
     }
 ```
-Just use Attribute SessionRequired on your controller to manage (begin/end/commit) NHibernate Session.
+
+```c#
+[Route("api/[controller]")]
+    public class ExampleController : Controller
+    {
+        private readonly IDatabaseFactory _databaseFactory;
+
+        public ValuesController(IDatabaseFactory databaseFactory)
+        {
+            _databaseFactory = databaseFactory;
+        }
+
+        // GET: api/values
+        [HttpGet]
+        public IEnumerable<User> Get()
+        {
+            using (_databaseFactory.BeginRequest())
+            {
+                var users = (from user in _databaseFactory.Session.Query<User>() select user);
+                return users.ToList();
+            }
+        }
+    }
+```
+
+Or Just use Attribute SessionRequired on your controller to manage (begin/end/commit) NHibernate Session.
 
 ```c#
         [HttpGet, SessionRequired]
@@ -115,24 +142,4 @@ Just use Attribute SessionRequired on your controller to manage (begin/end/commi
         }
 ```
 
-Inject IDatabaseFactory on your repositories
-
-```c#
-  public class UserRepository : IUserRepository
-    {
-        private readonly IDatabaseFactory _factory;
-
-        public UserRepository(IDatabaseFactory factory)
-        {
-            _factory = factory;
-        }
-
-        public IList<User> GetUsers()
-        {
-            return (from user in _factory.Session.Query<User>() select user)
-                   .ToList();
-        }
-
-    }
-```
 Done.
