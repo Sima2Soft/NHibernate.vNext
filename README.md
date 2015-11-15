@@ -115,7 +115,7 @@ Just use Attribute SessionRequired on your controller to manage (begin/end/commi
         }
 ```
 
-Inject IDatabaseFactory on repositories
+Inject IDatabaseFactory on your repositories
 
 ```c#
   public class UserRepository : IUserRepository
