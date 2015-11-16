@@ -30,7 +30,7 @@ namespace NHibernate.vNext
         }
 
        
-        private Assembly GetAssembly(string name)
+        protected Assembly GetAssembly(string name)
         {
             try
             {
@@ -62,19 +62,19 @@ namespace NHibernate.vNext
 
         }
 
+        protected Assembly CoreAssembly => GetAssembly(_dataConfiguration.CoreAssembly);
+        protected Assembly MapAssembly => GetAssembly(_dataConfiguration.MapAssembly);
 
-        private ISessionFactory GetConfiguration()
+        protected virtual ISessionFactory GetConfiguration()
         {
             return Fluently.Configure()
                     .Database(NHibernateConfiguration.GetDatabaseConfiguration(_dataConfiguration))
                     .Cache(c => c.UseQueryCache().ProviderClass<HashtableCacheProvider>())
                     .CurrentSessionContext<AspNetvNextWebSessionContext>()
-                    .Mappings(m => m.FluentMappings.AddFromAssembly(GetAssembly(_dataConfiguration.MapAssembly))
+                    .Mappings(m => m.FluentMappings.AddFromAssembly(MapAssembly)
                         .Conventions.Add(DefaultLazy.Always()))
-                    .Mappings(m => m.HbmMappings.AddFromAssembly(GetAssembly(_dataConfiguration.CoreAssembly)))
+                    .Mappings(m => m.HbmMappings.AddFromAssembly(CoreAssembly))
                     .BuildSessionFactory();
-
-
         }
 
 
