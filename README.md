@@ -108,6 +108,8 @@ public class Startup
     }
 ```
 
+Open session manually in your controller
+
 ```c#
 [Route("api/[controller]")]
     public class ExampleController : Controller
@@ -138,7 +140,7 @@ Or Just use Attribute SessionRequired on your controller to manage (begin/end/co
         [HttpGet, SessionRequired]
         public IEnumerable<User> Get()
         {
-            return _userRepository.GetUsers();
+            return  (from user in _databaseFactory.Session.Query<User>() select user).ToList();
         }
 ```
 
