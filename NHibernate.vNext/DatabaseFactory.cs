@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using FluentNHibernate.Cfg;
 using FluentNHibernate.Conventions.Helpers;
@@ -10,13 +12,19 @@ namespace NHibernate.vNext
 {
     public class DatabaseFactory : IDatabaseFactory
     {
-        private readonly DataConfiguration _dataConfiguration;
+        private readonly IDictionary<string, string> _configuration;
         private static ISessionFactory _sessionFactory;
 
-        public DatabaseFactory(DataConfiguration dataConfiguration)
+        public DatabaseFactory(ISessionFactory sessionFactory)
         {
-            _dataConfiguration = dataConfiguration;
+            _sessionFactory = sessionFactory;
         }
+
+        public DatabaseFactory(IDictionary<string, string> configuration)
+        {
+            _configuration = configuration;
+        }
+
 
         public ISession Session => !CurrentSessionContext.HasBind(_sessionFactory) ? null : _sessionFactory.GetCurrentSession();
         
@@ -29,52 +37,27 @@ namespace NHibernate.vNext
                 .Open(beginTransaction);
         }
 
-       
+
         protected Assembly GetAssembly(string name)
         {
-            try
-            {
-                return Assembly.Load(GetAssemblyName(name));
-            }
-            catch (FileLoadException)
-            {
-                throw new Exception($"Cannot find assembly name {name}. Please, configure correctly CoreAssembly and MapAssembly onto your config file.");
-            }
-            
-        }
+            var type = System.Type.GetType(name);
 
-        private string GetAssemblyName(string path)
-        {
-            try
-            {
-                if (!path.Contains(",")) return path;
+            if (type == null)
+                throw new Exception(
+                    $"Cannot find assembly name {name}. Please, configure correctly CoreAssembly and MapAssembly onto your config file.");
 
-                var position = path.IndexOf(",", StringComparison.Ordinal);
-                path = path.Substring(position + 1, path.Length - position - 1).Trim();
-
-            }
-            catch
-            {
-                // ignored
-            }
-
-            return path;
+            return type.Assembly;
 
         }
 
-        protected Assembly CoreAssembly => GetAssembly(_dataConfiguration.CoreAssembly);
-        protected Assembly MapAssembly => GetAssembly(_dataConfiguration.MapAssembly);
+        protected Assembly MapAssembly => GetAssembly(_configuration["mappingfluent"]);
 
         protected virtual ISessionFactory GetConfiguration()
         {
-            return Fluently.Configure()
-                    .Database(NHibernateConfiguration.GetDatabaseConfiguration(_dataConfiguration))
-                    .Cache(c => c.UseQueryCache().ProviderClass<HashtableCacheProvider>())
-                    .CurrentSessionContext<AspNetvNextWebSessionContext>()
-                    .Mappings(m => m.FluentMappings.AddFromAssembly(MapAssembly)
-                        .Conventions.Add(DefaultLazy.Always()))
-                    .Mappings(m => m.HbmMappings.AddFromAssembly(CoreAssembly))
-                    .BuildSessionFactory();
+            return Fluently.Configure(new Cfg.Configuration().AddProperties(_configuration))
+                .Mappings(m => m.FluentMappings.AddFromAssembly(MapAssembly)
+                    .Conventions.Add(DefaultLazy.Always()))
+                .BuildSessionFactory();
         }
 
 

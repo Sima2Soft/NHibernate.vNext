@@ -4,7 +4,8 @@ using Microsoft.Framework.DependencyInjection;
 
 namespace NHibernate.vNext
 {
-    public class SessionRequiredAttribute : ActionFilterAttribute
+    
+    public class SessionRequiredAttribute : ActionFilterAttribute, IExceptionFilter
     {
         private readonly bool _openTransaction;
         private readonly bool _verifyModelStateError;
@@ -26,11 +27,18 @@ namespace NHibernate.vNext
         {
             if (filterContext.Exception != null || (_verifyModelStateError && filterContext.ModelState.ErrorCount > 0))
             {
-                _request.Finish(true); /*force rollback.*/
+                _request.Finish(true); 
                 return;
             }
 
             _request.Finish();
+        }
+
+        public void OnException(ExceptionContext context)
+        {
+            _request.Finish(true);
+
+            throw context.Exception;
         }
     }
 }

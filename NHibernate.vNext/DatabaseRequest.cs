@@ -42,7 +42,7 @@ namespace NHibernate.vNext
             _sessionFactory.GetCurrentSession().Transaction.Rollback();
         }
 
-        public virtual void Finish(bool errors = false, bool reopen = false)
+        public virtual void Finish(bool forceRollback = false)
         {
 
             if (!CurrentSessionContext.HasBind(_sessionFactory))
@@ -54,13 +54,15 @@ namespace NHibernate.vNext
 
             try
             {
-                if (session.Transaction.IsActive)
+                if (!session.Transaction.IsActive) return;
+
+                if (forceRollback)
                 {
-                    if (errors) //errors in context. Not unbind session.
-                        session.Transaction.Rollback();
-                    else
-                        session.Transaction.Commit();
+                    session.Transaction.Rollback();
+                    return;
                 }
+
+                session.Transaction.Commit();
             }
             catch (Exception)
             {
@@ -75,10 +77,7 @@ namespace NHibernate.vNext
                     session.Close();
 
                 session.Dispose();
-            }
-
-            if (reopen) Open();
-
+            }            
         }
 
 

@@ -10,6 +10,6 @@ namespace NHibernate.vNext
         void BeginTransaction();
         void CommitTransaction();
         void RollbackTransaction();
-        void Finish(bool errors = false, bool reopen = false);
+        void Finish(bool forceRollback = false);
     }
 }
