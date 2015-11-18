@@ -44,7 +44,7 @@ namespace NHibernate.vNext
 
             if (type == null)
                 throw new Exception(
-                    $"Cannot find assembly name {name}. Please, configure correctly CoreAssembly and MapAssembly onto your config file.");
+                    $"Cannot find assembly name {name}. Please, configure correctly mappingfluent onto config file.");
 
             return type.Assembly;
 
